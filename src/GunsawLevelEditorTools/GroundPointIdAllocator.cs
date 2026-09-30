@@ -9,6 +9,7 @@ internal sealed class GroundPointIdAllocator
     private const int LastId = 6000999;
     private readonly HashSet<int> _seen = new HashSet<int>();
     private readonly HashSet<int> _used = new HashSet<int>();
+    private Level _level;
     private bool _enabled = true;
     private GameObject _placementSource;
     private Vector2 _placementStart;
@@ -20,6 +21,9 @@ internal sealed class GroundPointIdAllocator
 
     internal void Update(LevelEditor editor, bool duplicated)
     {
+        if (!ReferenceEquals(_level, editor.level))
+            Reset(editor);
+
         var selected = editor.currentlySelected;
         if (!selected)
             return;
@@ -92,6 +96,7 @@ internal sealed class GroundPointIdAllocator
         _seen.Clear();
         _used.Clear();
         _placementSource = null;
+        _level = editor != null ? editor.level : null;
         if (editor == null)
             return;
         foreach (var part in editor.GetComponentsInChildren<LevelPartGame>(true))
