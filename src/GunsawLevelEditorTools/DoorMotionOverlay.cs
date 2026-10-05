@@ -45,6 +45,7 @@ internal sealed class DoorMotionOverlay
         }
 
         var props = new List<LevelPartGame>();
+        var teleportZones = new List<LevelPartGame>();
         var targetParts = new List<LevelPartGame>();
         var changersByDoorId = new Dictionary<int, List<LevelPartGame>>();
         foreach (var part in editor.GetComponentsInChildren<LevelPartGame>(true))
@@ -52,6 +53,11 @@ internal sealed class DoorMotionOverlay
             if (IsMovingPart(part))
             {
                 props.Add(part);
+                targetParts.Add(part);
+            }
+            else if (IsTeleportZone(part))
+            {
+                teleportZones.Add(part);
                 targetParts.Add(part);
             }
             else if (part != null && part.part != null && IsDoorTargetChanger(part))
@@ -89,7 +95,7 @@ internal sealed class DoorMotionOverlay
             }
 
             if (_dragging == null)
-                foreach (var part in props)
+                foreach (var part in targetParts)
                     if (Near(part.part.force))
                     {
                         _dragging = part;
@@ -109,15 +115,15 @@ internal sealed class DoorMotionOverlay
             }
         }
 
-        var targetCount = props.Count;
+        var lineCount = (props.Count + teleportZones.Count) * 2;
         foreach (var part in props)
         {
             List<LevelPartGame> changers;
             if (changersByDoorId.TryGetValue(part.part.id, out changers))
-                targetCount += changers.Count;
+                lineCount += changers.Count * 3;
         }
 
-        SetLineCount(targetCount * 3);
+        SetLineCount(lineCount);
         var index = 0;
         foreach (var part in props)
         {
@@ -139,6 +145,12 @@ internal sealed class DoorMotionOverlay
             }
 
             UpdateGhost(part, part);
+        }
+
+        foreach (var part in teleportZones)
+        {
+            index = DrawTarget(_lines, index, part, part, TargetColors[1]);
+            UpdateInput(editor, part, part);
         }
 
         RemoveUnusedGhosts(targetParts);
@@ -183,6 +195,15 @@ internal sealed class DoorMotionOverlay
         var path = part.part.path;
         return path == "Building/Triggers/DoorPosChanger" || path == "Editor/Building/Triggers/DoorPosChanger" ||
                part.fullName == "Door Target Changer";
+    }
+
+    private static bool IsTeleportZone(LevelPartGame part)
+    {
+        if (part == null || part.part == null)
+            return false;
+            
+        return string.Equals(part.fullName, "Teleport Zone", System.StringComparison.OrdinalIgnoreCase) ||
+               (part.part.path != null && part.part.path.EndsWith("/TeleportZone", System.StringComparison.OrdinalIgnoreCase));
     }
 
     private static int DrawTarget(List<LineRenderer> lines, int index, LevelPartGame door, LevelPartGame targetPart,
