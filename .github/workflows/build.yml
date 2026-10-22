@@ -38,7 +38,7 @@ jobs:
           DEPENDENCIES_URL: ${{ secrets.GUNSAW_BUILD_DEPENDENCIES_URL }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $dependencyUri = $null
+          $dependencyUri = $env:DEPENDENCIES_URL
           $archivePath = Join-Path $env:RUNNER_TEMP 'gunsaw-build-dependencies.zip'
           $gameDirectory = Join-Path $env:RUNNER_TEMP 'gunsaw-build-dependencies'
           try {
