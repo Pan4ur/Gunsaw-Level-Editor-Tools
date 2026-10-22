@@ -25,16 +25,21 @@ internal sealed class GroundPointIdAllocator
             Reset(editor);
 
         var selected = editor.currentlySelected;
-        if (!selected)
+        var created = false;
+        var parts = editor.GetComponentsInChildren<LevelPartGame>(true);
+        foreach (var candidate in parts)
+            if (IsGroundPoint(candidate) && _seen.Add(candidate.gameObject.GetInstanceID()) &&
+                candidate.gameObject == selected)
+                created = true;
+
+        if (!selected || !created)
             return;
         var part = selected.GetComponent<LevelPartGame>();
-        if (!IsGroundPoint(part) || !_seen.Add(selected.GetInstanceID()))
-            return;
         if (!_enabled || duplicated)
             return;
 
         _used.Clear();
-        foreach (var candidate in editor.GetComponentsInChildren<LevelPartGame>(true))
+        foreach (var candidate in parts)
             if (candidate != null && IsGroundPoint(candidate))
                 _used.Add(candidate.part.id);
 
