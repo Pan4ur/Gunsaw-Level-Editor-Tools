@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.U2D;
 
 namespace GunsawLevelEditorTools;
@@ -111,6 +112,17 @@ internal sealed class GroundPreview
             }
 
             shape.RefreshSpriteShape();
+            shape.BakeMesh().Complete();
+            using (var commands = new CommandBuffer())
+            {
+                var target = Shader.PropertyToID("_GunsawGroundPreview");
+                commands.GetTemporaryRT(target, 1, 1, 0);
+                commands.SetRenderTarget(target);
+                var renderer = shape.GetComponent<Renderer>();
+                commands.DrawRenderer(renderer, renderer.sharedMaterial);
+                commands.ReleaseTemporaryRT(target);
+                Graphics.ExecuteCommandBuffer(commands);
+            }
             _shapes[pair.Key] = shape;
             _hashes[pair.Key] = hash;
         }
