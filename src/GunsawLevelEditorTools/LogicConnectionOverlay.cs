@@ -17,7 +17,6 @@ internal sealed class LogicConnectionOverlay
     private Material material;
     private bool visible;
     private float nextRefresh;
-    private float nextCustomRefresh;
 
     internal void Toggle(LevelEditor editor)
     {
@@ -121,9 +120,6 @@ internal sealed class LogicConnectionOverlay
 
     private void RefreshCustomEndpoints(LevelEditor editor)
     {
-        if (Time.unscaledTime < nextCustomRefresh)
-            return;
-        nextCustomRefresh = Time.unscaledTime + 1f;
         customEndpoints.Clear();
         components.Clear();
         editor.GetComponentsInChildren(true, components);
@@ -137,91 +133,16 @@ internal sealed class LogicConnectionOverlay
 
     private void ReadCustomProp(MonoBehaviour marker)
     {
-        var owner = marker.gameObject;
-        object data;
-        if (!MultiplayerLogic.TryGetData(marker, out data))
-            return;
-        if (MultiplayerLogic.IsType(data, "BinaryLogicGateData"))
-        {
-            AddCustom(MultiplayerLogic.ReadInt(data, "inputA"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "inputB"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "output"), true, owner);
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "ClockSignalData") || MultiplayerLogic.IsType(data, "ConstantGateData"))
-        {
-            AddCustom(MultiplayerLogic.ReadInt(data, "output"), true, owner);
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "DFlipFlopData"))
-        {
-            AddCustom(MultiplayerLogic.ReadInt(data, "d"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "clock"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "q"), true, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "notQ"), true, owner);
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "EdgeDetectorData"))
-        {
-            AddCustom(MultiplayerLogic.ReadInt(data, "input"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "output"), true, owner);
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "JkFlipFlopData"))
-        {
-            AddCustom(MultiplayerLogic.ReadInt(data, "j"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "k"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "clock"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "q"), true, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "notQ"), true, owner);
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "NotGateData"))
-        {
-            AddCustom(MultiplayerLogic.ReadInt(data, "input"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "output"), true, owner);
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "SrLatchData"))
-        {
-            AddCustom(MultiplayerLogic.ReadInt(data, "set"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "reset"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "q"), true, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "notQ"), true, owner);
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "TFlipFlopData"))
-        {
-            AddCustom(MultiplayerLogic.ReadInt(data, "t"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "clock"), false, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "q"), true, owner);
-            AddCustom(MultiplayerLogic.ReadInt(data, "notQ"), true, owner);
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "RandomIdRouterData"))
-        {
-            AddCustom(MultiplayerLogic.ReadInt(data, "activationId"), false, owner);
-            foreach (var value in (MultiplayerLogic.ReadString(data, "outputIds") ?? string.Empty).Split(','))
-            {
-                int id;
-                if (int.TryParse(value, out id))
-                    AddCustom(id, true, owner);
-            }
-        }
+        if (MultiplayerLogic.TryGetData(marker, out var data))
+            MultiplayerLogic.VisitSignals(data, (name, id, output) => AddCustom(id, output, marker.gameObject));
     }
 
     private void AddCustom(int id, bool output, GameObject owner)
     {
-        if (id >= 0)
-            customEndpoints.Add(new CustomEndpoint(id, output, owner));
+        foreach (var endpoint in customEndpoints)
+            if (endpoint.Id == id && endpoint.Output == output && endpoint.Owner == owner)
+                return;
+        customEndpoints.Add(new CustomEndpoint(id, output, owner));
     }
 
     private static void Add(Dictionary<int, List<Endpoint>> map, int id, Vector3 position, GameObject owner)

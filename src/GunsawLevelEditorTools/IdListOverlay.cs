@@ -194,73 +194,7 @@ internal sealed class IdListOverlay
 
     private void AddCustomEntries(MonoBehaviour marker, object data)
     {
-        if (MultiplayerLogic.IsType(data, "BinaryLogicGateData"))
-        {
-            AddCustom(marker, "inputA", MultiplayerLogic.ReadInt(data, "inputA"));
-            AddCustom(marker, "inputB", MultiplayerLogic.ReadInt(data, "inputB"));
-            AddCustom(marker, "output", MultiplayerLogic.ReadInt(data, "output"));
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "ClockSignalData") || MultiplayerLogic.IsType(data, "ConstantGateData"))
-        {
-            AddCustom(marker, "output", MultiplayerLogic.ReadInt(data, "output"));
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "DFlipFlopData"))
-        {
-            AddCustom(marker, "d", MultiplayerLogic.ReadInt(data, "d"));
-            AddCustom(marker, "clock", MultiplayerLogic.ReadInt(data, "clock"));
-            AddCustom(marker, "q", MultiplayerLogic.ReadInt(data, "q"));
-            AddCustom(marker, "notQ", MultiplayerLogic.ReadInt(data, "notQ"));
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "EdgeDetectorData"))
-        {
-            AddCustom(marker, "input", MultiplayerLogic.ReadInt(data, "input"));
-            AddCustom(marker, "output", MultiplayerLogic.ReadInt(data, "output"));
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "JkFlipFlopData"))
-        {
-            AddCustom(marker, "j", MultiplayerLogic.ReadInt(data, "j"));
-            AddCustom(marker, "k", MultiplayerLogic.ReadInt(data, "k"));
-            AddCustom(marker, "clock", MultiplayerLogic.ReadInt(data, "clock"));
-            AddCustom(marker, "q", MultiplayerLogic.ReadInt(data, "q"));
-            AddCustom(marker, "notQ", MultiplayerLogic.ReadInt(data, "notQ"));
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "NotGateData"))
-        {
-            AddCustom(marker, "input", MultiplayerLogic.ReadInt(data, "input"));
-            AddCustom(marker, "output", MultiplayerLogic.ReadInt(data, "output"));
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "SrLatchData"))
-        {
-            AddCustom(marker, "set", MultiplayerLogic.ReadInt(data, "set"));
-            AddCustom(marker, "reset", MultiplayerLogic.ReadInt(data, "reset"));
-            AddCustom(marker, "q", MultiplayerLogic.ReadInt(data, "q"));
-            AddCustom(marker, "notQ", MultiplayerLogic.ReadInt(data, "notQ"));
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "TFlipFlopData"))
-        {
-            AddCustom(marker, "t", MultiplayerLogic.ReadInt(data, "t"));
-            AddCustom(marker, "clock", MultiplayerLogic.ReadInt(data, "clock"));
-            AddCustom(marker, "q", MultiplayerLogic.ReadInt(data, "q"));
-            AddCustom(marker, "notQ", MultiplayerLogic.ReadInt(data, "notQ"));
-            return;
-        }
-
-        if (MultiplayerLogic.IsType(data, "RandomIdRouterData"))
-            AddCustom(marker, "activationId", MultiplayerLogic.ReadInt(data, "activationId"));
+        MultiplayerLogic.VisitSignals(data, (name, id, output) => AddCustom(marker, name, id));
     }
 
     private void AddCustom(MonoBehaviour marker, string channel, int id)

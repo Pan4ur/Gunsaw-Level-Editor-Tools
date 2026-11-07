@@ -24,6 +24,7 @@ internal sealed class EditorHotbar
     private Image.Type _frameType;
     private Material _frameMaterial;
     private LevelEditor _editor;
+    private MonoBehaviour _customController;
 
     internal bool Visible => _visible;
 
@@ -39,9 +40,16 @@ internal sealed class EditorHotbar
     internal void Update(LevelEditor editor, bool editingText)
     {
         _editor = editor;
+        _customController = MultiplayerLogic.Controller(editor);
         EnsureUi(editor);
         BindSpawnIcons(editor);
-        if (editor.miniHeldObj == null || editor.miniHeldObj.sprite == null)
+        if (!string.IsNullOrEmpty(editor.curSpawnPath) && MultiplayerLogic.Placement(_customController) != null)
+        {
+            MultiplayerLogic.EndPlacement(_customController);
+            _activePath = null;
+        }
+        if ((editor.miniHeldObj == null || editor.miniHeldObj.sprite == null) &&
+            MultiplayerLogic.Placement(_customController) == null)
             _activePath = null;
         if (_placementPath != null)
         {
@@ -59,9 +67,7 @@ internal sealed class EditorHotbar
         var slot = PressedSlot();
         if (slot >= 0 && !string.IsNullOrEmpty(_slots[slot].Path))
         {
-            _activePath = _slots[slot].Path;
-            editor.SelectObj(_activePath);
-            UpdateUi();
+            SelectSlot(slot);
         }
 
         if (!Input.GetMouseButtonDown(1) || string.IsNullOrEmpty(_activePath) ||
@@ -73,8 +79,16 @@ internal sealed class EditorHotbar
         _placementStart = Input.mousePosition;
     }
 
-    private static void Place(LevelEditor editor, string path)
+    private void Place(LevelEditor editor, string path)
     {
+        foreach (var slot in _slots)
+            if (slot.Path == path && slot.Definition != null)
+            {
+                if (_customController != null && Camera.main != null)
+                    MultiplayerLogic.Place(_customController, slot.Definition,
+                        editor.alignToGrid(Camera.main.ScreenToWorldPoint(Input.mousePosition)));
+                return;
+            }
         var prefab = Resources.Load<GameObject>(path);
         if (!prefab || Camera.main == null)
             return;
@@ -92,6 +106,7 @@ internal sealed class EditorHotbar
         _boundIcons.Clear();
         _activePath = null;
         _placementPath = null;
+        _customController = null;
     }
 
     private void BindSpawnIcons(LevelEditor editor)
@@ -118,13 +133,18 @@ internal sealed class EditorHotbar
     private void AssignHeldSlot(SpawnIcon icon)
     {
         var slot = HeldSlot();
-        if (slot < 0 || icon == null || string.IsNullOrEmpty(icon.spawnString))
+        if (slot < 0 || icon == null)
             return;
         var item = _slots[slot];
-        item.Path = icon.spawnString;
-        var prefab = Resources.Load<GameObject>(item.Path);
+        var definition = string.IsNullOrEmpty(_editor.curSpawnPath)
+            ? MultiplayerLogic.Placement(_customController) : null;
+        if (definition == null && string.IsNullOrEmpty(icon.spawnString))
+            return;
+        item.Definition = definition;
+        item.Path = definition == null ? icon.spawnString : MultiplayerLogic.ReadString(definition, "TypeId");
+        var prefab = definition == null ? Resources.Load<GameObject>(item.Path) : null;
         var spriteRenderer = prefab ? prefab.GetComponent<SpriteRenderer>() : null;
-        item.Icon.sprite = spriteRenderer ? spriteRenderer.sprite : null;
+        item.Icon.sprite = definition != null ? MultiplayerLogic.Icon(definition) : spriteRenderer ? spriteRenderer.sprite : null;
         item.Icon.enabled = item.Icon.sprite != null;
         _activePath = item.Path;
         UpdateUi();
@@ -241,7 +261,16 @@ internal sealed class EditorHotbar
         if (_editor == null || index < 0 || index >= _slots.Length || string.IsNullOrEmpty(_slots[index].Path))
             return;
         _activePath = _slots[index].Path;
-        _editor.SelectObj(_activePath);
+        if (_slots[index].Definition != null)
+        {
+            if (_customController != null)
+                MultiplayerLogic.BeginPlacement(_customController, _slots[index].Definition);
+        }
+        else
+        {
+            MultiplayerLogic.EndPlacement(_customController);
+            _editor.SelectObj(_activePath);
+        }
         UpdateUi();
     }
 
@@ -299,6 +328,7 @@ internal sealed class EditorHotbar
     private sealed class Slot
     {
         internal string Path;
+        internal object Definition;
         internal Image Box;
         internal Image Icon;
         internal Outline Outline;
