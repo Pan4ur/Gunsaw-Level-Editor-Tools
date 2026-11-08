@@ -11,13 +11,20 @@ internal sealed class LampColorPicker
     private Slider[] _sliders;
     private TMP_Text[] _labels;
     private LevelPartGame _lamp;
+    private object _changerData;
+    private TMP_InputField _colorField;
+    private Color _color;
     private bool _syncing;
 
     internal void Update(LevelEditor editor)
     {
         var selected = GetSelected(editor);
         var lamp = selected == null ? null : selected.GetComponent<LevelPartGame>();
-        if (lamp == null || !string.Equals(lamp.fullName, "Colored Lamp", StringComparison.OrdinalIgnoreCase))
+        _changerData = null;
+        if (selected != null)
+            MultiplayerLogic.TryGetData(selected.GetComponent("CustomPropMarker") as MonoBehaviour, out _changerData);
+        _colorField = MultiplayerLogic.IsType(_changerData, "LampColorChangerData") ? editor.teamField : null;
+        if (lamp == null || (_colorField == null && !string.Equals(lamp.fullName, "Colored Lamp", StringComparison.OrdinalIgnoreCase)))
         {
             if (_root)
                 _root.SetActive(false);
@@ -28,10 +35,11 @@ internal sealed class LampColorPicker
         EnsureUi(editor);
         _root.SetActive(true);
         PositionUi(editor);
-        if (_lamp != lamp)
+        var color = ReadColor(lamp);
+        if (_lamp != lamp || _color != color)
         {
             _lamp = lamp;
-            SetColor(ReadColor(lamp));
+            SetColor(color);
         }
     }
 
@@ -158,6 +166,13 @@ internal sealed class LampColorPicker
             color = new Color(_sliders[0].value, _sliders[1].value, _sliders[2].value);
         else
             color = HslToRgb(_sliders[3].value, _sliders[4].value, _sliders[5].value);
+        if (_colorField != null)
+        {
+            _colorField.SetTextWithoutNotify("#" + ColorUtility.ToHtmlStringRGB(color));
+            _colorField.onEndEdit.Invoke(_colorField.text);
+            SetColor(ReadColor(_lamp));
+            return;
+        }
         _lamp.part.team = "#" + ColorUtility.ToHtmlStringRGB(color);
         LevelLoader.UpdateLampColor(_lamp.gameObject, _lamp.part.force.x, color);
         SetColor(color);
@@ -168,6 +183,7 @@ internal sealed class LampColorPicker
         if (_sliders == null)
             return;
         _syncing = true;
+        _color = color;
         var hsl = RgbToHsl(color);
         var values = new[] { color.r, color.g, color.b, hsl.x, hsl.y, hsl.z };
         for (var i = 0; i < 6; i++)
@@ -182,10 +198,11 @@ internal sealed class LampColorPicker
         _syncing = false;
     }
 
-    private static Color ReadColor(LevelPartGame lamp)
+    private Color ReadColor(LevelPartGame lamp)
     {
         Color color;
-        return ColorUtility.TryParseHtmlString(lamp.part.team, out color) ? color : Color.white;
+        var value = _colorField == null ? lamp.part.team : MultiplayerLogic.ReadString(_changerData, "color");
+        return ColorUtility.TryParseHtmlString(value, out color) ? color : Color.white;
     }
 
     private static string LabelText(int index, float value)
@@ -246,5 +263,7 @@ internal sealed class LampColorPicker
         _sliders = null;
         _labels = null;
         _lamp = null;
+        _changerData = null;
+        _colorField = null;
     }
 }

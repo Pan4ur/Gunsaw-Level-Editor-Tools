@@ -154,7 +154,7 @@ public sealed class GunsawLevelEditorToolsPlugin : BaseUnityPlugin
         _logicConnections.Dispose();
         _levelTools.Dispose();
         _doorMotion.Dispose();
-        _history.Reset();
+        _history.Dispose();
         _lampColorPicker.Dispose();
         _idList.Dispose();
         _groundPreview.Dispose();
