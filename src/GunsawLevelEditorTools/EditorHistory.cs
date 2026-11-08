@@ -9,9 +9,19 @@ internal sealed class EditorHistory
     private readonly Stack<Entry> _redo = new Stack<Entry>();
     private string _last;
     private string _mouseStart;
+    private readonly CollaborativeEditorHistory _collaborative = new CollaborativeEditorHistory();
+    private bool _wasCollaborative;
 
     internal void Update(LevelEditor editor, bool editingText)
     {
+        var collaborative = _collaborative.Update(editor, editingText);
+        if (collaborative != _wasCollaborative)
+        {
+            ResetSnapshots();
+            _wasCollaborative = collaborative;
+        }
+        if (collaborative)
+            return;
         if (_last == null)
         {
             _last = Snapshot(editor);
@@ -97,6 +107,19 @@ internal sealed class EditorHistory
     }
 
     internal void Reset()
+    {
+        ResetSnapshots();
+        _collaborative.Reset();
+        _wasCollaborative = false;
+    }
+
+    internal void Dispose()
+    {
+        Reset();
+        _collaborative.Dispose();
+    }
+
+    private void ResetSnapshots()
     {
         _undo.Clear();
         _redo.Clear();
