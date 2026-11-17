@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace GunsawLevelEditorTools;
@@ -69,17 +70,9 @@ internal sealed class GroundPointIdAllocator
             var source = sourceObject.GetComponent<LevelPartGame>();
             if (!IsGroundPoint(source) || Camera.main == null)
                 return false;
-            var copy = Object.Instantiate(sourceObject, editor.transform);
             var position = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             position.z = sourceObject.transform.position.z;
-            copy.transform.position = position;
-            var part = copy.GetComponent<LevelPartGame>();
-            part.part.id = source.part.id;
-            var groundPoint = copy.GetComponent<GroundPoint>();
-            if (groundPoint != null)
-                groundPoint.id = source.part.id;
-            _seen.Add(copy.GetInstanceID());
-            return true;
+            return TryPlacePoint(editor, source, position);
         }
 
         if (!Input.GetMouseButtonDown(1) ||
@@ -94,6 +87,24 @@ internal sealed class GroundPointIdAllocator
         _placementSource = selected;
         _placementStart = Input.mousePosition;
         return false;
+    }
+
+    private bool TryPlacePoint(LevelEditor editor, LevelPartGame source, Vector3 position)
+    {
+        if (editor.GetComponentsInChildren<LevelPartGame>(true).Any(candidate => IsGroundPoint(candidate) && candidate.part.id == source.part.id && ((Vector2)candidate.transform.position - (Vector2)position).sqrMagnitude < .0001f))
+            return false;
+
+        var copy = Object.Instantiate(source.gameObject, editor.transform);
+        copy.transform.position = position;
+        
+        var part = copy.GetComponent<LevelPartGame>();
+        part.part.id = source.part.id;
+        
+        var groundPoint = copy.GetComponent<GroundPoint>();
+        if (groundPoint != null) groundPoint.id = source.part.id;
+        
+        _seen.Add(copy.GetInstanceID());
+        return true;
     }
 
     internal void Reset(LevelEditor editor)
